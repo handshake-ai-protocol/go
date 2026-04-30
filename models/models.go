@@ -47,20 +47,20 @@ type Capability struct {
 
 // DelegationToken — delegation-token.json
 type DelegationToken struct {
-	Version                       string             `json:"version" validate:"required"`
-	Kind                          string             `json:"kind" validate:"required,eq=DelegationToken"`
-	ID                            string             `json:"id" validate:"required"`
-	Iss                           string             `json:"iss" validate:"required"`
-	Sub                           string             `json:"sub" validate:"required"`
-	Aud                           string             `json:"aud" validate:"required"`
-	Iat                           string             `json:"iat" validate:"required"`
-	Nbf                           string             `json:"nbf" validate:"required"`
-	Exp                           string             `json:"exp" validate:"required"`
-	Capabilities                  []Capability       `json:"capabilities" validate:"required,min=1,dive"`
-	SubDelegationDepthRemaining   uint32             `json:"sub_delegation_depth_remaining"`
-	ParentDelegationID            string             `json:"parent_delegation_id,omitempty"`
-	Alg                           SignatureAlgorithm `json:"alg" validate:"required,oneof=EdDSA ML-DSA-65 Hybrid-EdDSA-MLDSA65"`
-	Signature                     string             `json:"signature,omitempty"`
+	Version                     string             `json:"version" validate:"required"`
+	Kind                        string             `json:"kind" validate:"required,eq=DelegationToken"`
+	ID                          string             `json:"id" validate:"required"`
+	Iss                         string             `json:"iss" validate:"required"`
+	Sub                         string             `json:"sub" validate:"required"`
+	Aud                         string             `json:"aud" validate:"required"`
+	Iat                         string             `json:"iat" validate:"required"`
+	Nbf                         string             `json:"nbf" validate:"required"`
+	Exp                         string             `json:"exp" validate:"required"`
+	Capabilities                []Capability       `json:"capabilities" validate:"required,min=1,dive"`
+	SubDelegationDepthRemaining uint32             `json:"sub_delegation_depth_remaining"`
+	ParentDelegationID          string             `json:"parent_delegation_id,omitempty"`
+	Alg                         SignatureAlgorithm `json:"alg" validate:"required,oneof=EdDSA ML-DSA-65 Hybrid-EdDSA-MLDSA65"`
+	Signature                   string             `json:"signature,omitempty"`
 }
 
 // HandshakeRequest — handshake-request.json
