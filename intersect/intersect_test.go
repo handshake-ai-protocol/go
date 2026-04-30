@@ -7,6 +7,7 @@
 package intersect
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"testing/quick"
@@ -63,6 +64,38 @@ func (constraintSet) Generate(rand *randSource, _ int) reflect.Value {
 	// exact-match string: 0..1 key
 	if rand.Intn(2) == 1 {
 		m["region"] = regionValues[rand.Intn(len(regionValues))]
+	}
+	// time_window: 0..1 key. Two endpoints in 0..23 of 2026-01-01.
+	// Always emit start < end so individual inputs are well-formed; the
+	// intersection of two such windows may still be empty (which the
+	// operator must reject) — that's covered by the asymmetric-admission
+	// case in the lattice axioms.
+	if rand.Intn(2) == 1 {
+		a, b := rand.Intn(23), rand.Intn(23)
+		if a > b {
+			a, b = b, a+1
+		} else if a == b {
+			b = a + 1
+		}
+		m["active_window"] = []any{
+			fmt.Sprintf("2026-01-01T%02d:00:00Z", a),
+			fmt.Sprintf("2026-01-01T%02d:00:00Z", b),
+		}
+	}
+	// rate_limit: 0..1 key with two numeric dimensions. Use float64 to
+	// match what `encoding/json` decodes numbers into — ensures the
+	// axiom comparisons (DeepEqual) don't trip on int-vs-float.
+	if rand.Intn(2) == 1 {
+		m["api_rate_limit"] = map[string]any{
+			"per_second": float64(rand.Intn(99) + 1),
+			"per_minute": float64(rand.Intn(99) + 1),
+		}
+	}
+	// resource_path: 0..1 key. A handful of fixed strings so the
+	// wildcard prefix path `/v1/*` admits some siblings and rejects others.
+	if rand.Intn(2) == 1 {
+		paths := []string{"/v1/users", "/v1/users/me", "/v1/orders", "/v1/*"}
+		m["api_path"] = paths[rand.Intn(len(paths))]
 	}
 	return reflect.ValueOf(m)
 }

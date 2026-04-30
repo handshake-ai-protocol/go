@@ -13,6 +13,8 @@ package intersect
 import (
 	"fmt"
 	"sort"
+	"strings"
+	"time"
 )
 
 // ConstraintType categorizes a constraint key into one of the typed
@@ -175,16 +177,13 @@ func intersectOne(key string, ty ConstraintType, d, r any) (any, error) {
 			return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested enum %s disjoint from delegated set", key)}
 		}
 		return narrowed, nil
-	case TimeWindow, RateLimit:
-		// Phase 2 ships exact-equality semantics; full algebra in Phase 2.1.
-		if jsonEqual(d, r) {
-			return d, nil
-		}
-		return nil, &ScopeViolation{
-			Key:    key,
-			Reason: fmt.Sprintf("constraint %s differs between delegation and request (full %s algebra is Phase 2.1; exact match required for now)", key, typeName(ty)),
-		}
-	case StringPattern, ResourcePath, ExactMatch:
+	case TimeWindow:
+		return intersectTimeWindow(key, d, r)
+	case RateLimit:
+		return intersectRateLimit(key, d, r)
+	case ResourcePath:
+		return intersectResourcePath(key, d, r)
+	case StringPattern, ExactMatch:
 		if jsonEqual(d, r) {
 			return d, nil
 		}
@@ -195,6 +194,168 @@ func intersectOne(key string, ty ConstraintType, d, r any) (any, error) {
 	default:
 		return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("unknown constraint type for key %s", key)}
 	}
+}
+
+// intersectTimeWindow narrows two `[start, end]` RFC 3339 windows to
+// `[max(start), min(end)]`, rejecting empty intersections. Mirrors the
+// Rust `intersect_time_window`.
+func intersectTimeWindow(key string, d, r any) (any, error) {
+	ds, de, err := parseWindow(key, "delegated", d)
+	if err != nil {
+		return nil, err
+	}
+	rs, re, err := parseWindow(key, "requested", r)
+	if err != nil {
+		return nil, err
+	}
+	start, startSide := ds, "d"
+	if rs.After(ds) {
+		start, startSide = rs, "r"
+	}
+	end, endSide := de, "d"
+	if re.Before(de) {
+		end, endSide = re, "r"
+	}
+	if !start.Before(end) {
+		return nil, &ScopeViolation{
+			Key:    key,
+			Reason: fmt.Sprintf("time_window %s intersection empty: max(start) %s ≥ min(end) %s", key, start.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339)),
+		}
+	}
+	// Preserve original RFC 3339 strings from whichever side won.
+	da, _ := d.([]any)
+	ra, _ := r.([]any)
+	var startVal, endVal any
+	if startSide == "d" {
+		startVal = da[0]
+	} else {
+		startVal = ra[0]
+	}
+	if endSide == "d" {
+		endVal = da[1]
+	} else {
+		endVal = ra[1]
+	}
+	return []any{startVal, endVal}, nil
+}
+
+func parseWindow(key, side string, v any) (time.Time, time.Time, error) {
+	arr, ok := v.([]any)
+	if !ok {
+		return time.Time{}, time.Time{}, &ScopeViolation{
+			Key:    key,
+			Reason: fmt.Sprintf("%s %s time_window must be a 2-element array", side, key),
+		}
+	}
+	if len(arr) != 2 {
+		return time.Time{}, time.Time{}, &ScopeViolation{
+			Key:    key,
+			Reason: fmt.Sprintf("%s %s time_window must be exactly [start, end]", side, key),
+		}
+	}
+	parseOne := func(x any) (time.Time, error) {
+		s, ok := x.(string)
+		if !ok {
+			return time.Time{}, &ScopeViolation{Key: key, Reason: fmt.Sprintf("%s %s time_window endpoints must be RFC 3339 strings", side, key)}
+		}
+		t, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			return time.Time{}, &ScopeViolation{Key: key, Reason: fmt.Sprintf("%s %s time_window endpoint not RFC 3339: %v", side, key, err)}
+		}
+		return t.UTC(), nil
+	}
+	s, err := parseOne(arr[0])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	e, err := parseOne(arr[1])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return s, e, nil
+}
+
+// intersectRateLimit narrows two `{ "per_second": N, ... }` rate-limit
+// objects, taking min on each shared dimension; dimensions present on
+// only one side carry through. Mirrors `intersect_rate_limit` in Rust.
+func intersectRateLimit(key string, d, r any) (any, error) {
+	dm, ok := d.(map[string]any)
+	if !ok {
+		return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("delegated %s rate_limit must be an object", key)}
+	}
+	rm, ok := r.(map[string]any)
+	if !ok {
+		return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested %s rate_limit must be an object", key)}
+	}
+	out := map[string]any{}
+	seen := map[string]struct{}{}
+	var keys []string
+	for k := range dm {
+		if _, ok := seen[k]; !ok {
+			seen[k] = struct{}{}
+			keys = append(keys, k)
+		}
+	}
+	for k := range rm {
+		if _, ok := seen[k]; !ok {
+			seen[k] = struct{}{}
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		dv, dok := dm[k]
+		rv, rok := rm[k]
+		switch {
+		case dok && !rok:
+			out[k] = dv
+		case !dok && rok:
+			out[k] = rv
+		default:
+			dn, ok := toNumber(dv)
+			if !ok {
+				return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("delegated %s.%s not numeric", key, k)}
+			}
+			rn, ok := toNumber(rv)
+			if !ok {
+				return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested %s.%s not numeric", key, k)}
+			}
+			if rn > dn {
+				return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested %s.%s=%s exceeds delegated %s", key, k, fmtNum(rn), fmtNum(dn))}
+			}
+			if rn <= dn {
+				out[k] = rv
+			} else {
+				out[k] = dv
+			}
+		}
+	}
+	return out, nil
+}
+
+// intersectResourcePath accepts request iff its path is under the
+// delegation's wildcard prefix `<prefix>/*`, or byte-equal when there
+// is no wildcard. Mirrors `intersect_resource_path` in Rust.
+func intersectResourcePath(key string, d, r any) (any, error) {
+	ds, ok := d.(string)
+	if !ok {
+		return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("delegated %s resource_path must be a string", key)}
+	}
+	rs, ok := r.(string)
+	if !ok {
+		return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested %s resource_path must be a string", key)}
+	}
+	if strings.HasSuffix(ds, "/*") {
+		prefix := strings.TrimSuffix(ds, "/*")
+		if rs == prefix || strings.HasPrefix(rs, prefix+"/") {
+			return r, nil
+		}
+		return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested %s=%q not under delegated prefix %q", key, rs, ds)}
+	}
+	if ds == rs {
+		return r, nil
+	}
+	return nil, &ScopeViolation{Key: key, Reason: fmt.Sprintf("requested %s=%q not equal to delegated %q (no wildcard)", key, rs, ds)}
 }
 
 func bothNumbers(key string, d, r any) (float64, float64, error) {
