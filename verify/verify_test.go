@@ -232,6 +232,143 @@ func TestRevokedDelegationRejected(t *testing.T) {
 	}
 }
 
+// TestChainBrokenWhenRequestedCapNotDelegableEvenIfOtherCapIs guards the
+// architect-flagged authorization-escalation case from the T007 wrap-up
+// review: an intermediate link grants two capabilities — the requested
+// one with delegable=false and an unrelated one with delegable=true. The
+// chain MUST be rejected with chain_broken at delegation_chain_walk;
+// co-mingling an unrelated delegable capability MUST NOT be enough to
+// launder a non-delegable one. Mirrored as conformance vector
+// `error_codes/009-non-delegable-capability.json`.
+func TestChainBrokenWhenRequestedCapNotDelegableEvenIfOtherCapIs(t *testing.T) {
+	aliceKp, err := signing.GenerateEd25519()
+	if err != nil {
+		t.Fatalf("alice keypair: %v", err)
+	}
+	agent1Kp, err := signing.GenerateEd25519()
+	if err != nil {
+		t.Fatalf("agent1 keypair: %v", err)
+	}
+	agent2Kp, err := signing.GenerateEd25519()
+	if err != nil {
+		t.Fatalf("agent2 keypair: %v", err)
+	}
+
+	notDelegable := false
+	delegable := true
+
+	root := models.DelegationToken{
+		Version: SpecVersion,
+		Kind:    "DelegationToken",
+		ID:      "dt_009a",
+		Iss:     "did:hsk:user:alice",
+		Sub:     "did:hsk:agent:agent1",
+		Aud:     "did:hsk:agent:agent1",
+		Iat:     "2026-04-29T14:02:11Z",
+		Nbf:     "2026-04-29T14:02:11Z",
+		Exp:     "2026-04-29T14:32:11Z",
+		Capabilities: []models.Capability{
+			// Requested cap: NOT delegable.
+			{
+				Name:        "billing.invoices.read",
+				Constraints: json.RawMessage(`{"max_invoices":100}`),
+				Delegable:   &notDelegable,
+			},
+			// Decoy cap: delegable.
+			{
+				Name:        "billing.invoices.export",
+				Constraints: json.RawMessage(`{"max_invoices":100}`),
+				Delegable:   &delegable,
+			},
+		},
+		SubDelegationDepthRemaining: 1,
+		Alg:                         models.AlgEdDSA,
+	}
+	rootMsg, err := bytesToSign(&root)
+	if err != nil {
+		t.Fatalf("root canon: %v", err)
+	}
+	root.Signature = signing.SignEd25519B64(aliceKp.Private, rootMsg)
+
+	leaf := models.DelegationToken{
+		Version: SpecVersion,
+		Kind:    "DelegationToken",
+		ID:      "dt_009b",
+		Iss:     "did:hsk:agent:agent1",
+		Sub:     "did:hsk:agent:agent2",
+		Aud:     "did:hsk:agent:agent2",
+		Iat:     "2026-04-29T14:03:00Z",
+		Nbf:     "2026-04-29T14:03:00Z",
+		Exp:     "2026-04-29T14:33:00Z",
+		Capabilities: []models.Capability{
+			{
+				Name:        "billing.invoices.read",
+				Constraints: json.RawMessage(`{"max_invoices":50}`),
+				Delegable:   &notDelegable,
+			},
+		},
+		SubDelegationDepthRemaining: 0,
+		Alg:                         models.AlgEdDSA,
+	}
+	leafMsg, err := bytesToSign(&leaf)
+	if err != nil {
+		t.Fatalf("leaf canon: %v", err)
+	}
+	leaf.Signature = signing.SignEd25519B64(agent1Kp.Private, leafMsg)
+
+	request := models.HandshakeRequest{
+		Version:          SpecVersion,
+		Kind:             "HandshakeRequest",
+		ID:               "hs_009",
+		Iss:              "did:hsk:agent:agent2",
+		Aud:              "did:hsk:svc:test-service",
+		Iat:              "2026-04-29T14:14:32Z",
+		Nonce:            "nonce-009-go",
+		AgentAttestation: json.RawMessage(`{"deployer":"did:hsk:org:o","model":"claude-sonnet-4-5"}`),
+		Capability: models.Capability{
+			Name:        "billing.invoices.read",
+			Constraints: json.RawMessage(`{"max_invoices":25}`),
+		},
+		DelegationChain: []models.DelegationToken{root, leaf},
+		Alg:             models.AlgEdDSA,
+	}
+	reqMsg, err := bytesToSign(&request)
+	if err != nil {
+		t.Fatalf("request canon: %v", err)
+	}
+	request.Signature = signing.SignEd25519B64(agent2Kp.Private, reqMsg)
+
+	resolver := NewStaticKeyResolver()
+	resolver.Insert("did:hsk:user:alice", []byte(ed25519.PublicKey(aliceKp.Public)))
+	resolver.Insert("did:hsk:agent:agent1", []byte(ed25519.PublicKey(agent1Kp.Public)))
+	resolver.Insert("did:hsk:agent:agent2", []byte(ed25519.PublicKey(agent2Kp.Public)))
+
+	ctx := &Context{
+		ReceiverDID: "did:hsk:svc:test-service",
+		Now:         mustParse(t, "2026-04-29T14:14:32Z"),
+		SkewSecs:    DefaultSkewSecs,
+		Keys:        resolver,
+		Nonces:      NewInMemoryNonceStore(120),
+		Revocations: &StaticRevocationResolver{},
+	}
+	res := VerifyHandshakeRequest(&request, ctx)
+	if res.Accepted() {
+		t.Fatal("must reject — non-delegable cap with delegable decoy")
+	}
+	if res.Refusal.ErrorCode != ChainBroken {
+		t.Fatalf("expected chain_broken, got %s", res.Refusal.ErrorCode)
+	}
+	if res.Refusal.RejectedAtStep != StepDelegationChainWalk {
+		t.Fatalf("expected delegation_chain_walk, got %s", res.Refusal.RejectedAtStep)
+	}
+	if res.Refusal.RejectedDelegationID != "dt_009a" {
+		t.Fatalf("expected dt_009a as rejected delegation, got %s", res.Refusal.RejectedDelegationID)
+	}
+	if !strings.Contains(res.Refusal.Detail, "billing.invoices.read") || !strings.Contains(res.Refusal.Detail, "not delegable") {
+		t.Fatalf("expected detail to name the non-delegable cap, got %q", res.Refusal.Detail)
+	}
+}
+
 // TestJCSEqualityWithRust is a smoke check: the JCS canonicalization of a
 // signed delegation must round-trip through Go's encoding without changing
 // the signature payload. The cross-language byte-equality bar is enforced

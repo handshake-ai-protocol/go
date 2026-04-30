@@ -274,7 +274,7 @@ func VerifyHandshakeRequest(req *models.HandshakeRequest, ctx *Context) *Result 
 	var cum *cumulative
 
 	for idx, link := range req.DelegationChain {
-		if rej := verifyLink(&link, idx, len(req.DelegationChain), ctx); rej != nil {
+		if rej := verifyLink(&link, idx, len(req.DelegationChain), req.Capability.Name, ctx); rej != nil {
 			return &Result{Refusal: rej}
 		}
 
@@ -327,7 +327,7 @@ func VerifyHandshakeRequest(req *models.HandshakeRequest, ctx *Context) *Result 
 	return &Result{Acceptance: &Acceptance{Capability: cum.name, EffectiveConstraints: effective}}
 }
 
-func verifyLink(link *models.DelegationToken, idx, chainLen int, ctx *Context) *Refusal {
+func verifyLink(link *models.DelegationToken, idx, chainLen int, requestedCapabilityName string, ctx *Context) *Refusal {
 	if link.Kind != "DelegationToken" {
 		return &Refusal{ErrorCode: SignatureInvalid, RejectedAtStep: StepDelegationChainWalk, RejectedDelegationID: link.ID,
 			Detail: fmt.Sprintf("expected kind=DelegationToken, got %s", link.Kind)}
@@ -369,19 +369,27 @@ func verifyLink(link *models.DelegationToken, idx, chainLen int, ctx *Context) *
 			Detail: fmt.Sprintf("issuer principal %s is revoked", link.Iss)}
 	}
 
-	// 7e: delegable + sub_delegation_depth_remaining for non-final links
+	// 7e: delegable + sub_delegation_depth_remaining for non-final links.
+	// The *specific capability* the request is asking for must be
+	// delegable=true on this link — checking "any cap on the link is
+	// delegable" would let an attacker chain a non-delegable capability
+	// A by co-mingling it with an unrelated delegable capability B.
+	// (See architect review of T007 wrap-up; ADR-0007.)
 	if idx+1 < chainLen {
-		anyDelegable := false
-		for _, c := range link.Capabilities {
-			if c.Delegable != nil && *c.Delegable {
-				anyDelegable = true
-				break
+		for i := range link.Capabilities {
+			c := &link.Capabilities[i]
+			if c.Name != requestedCapabilityName {
+				continue
 			}
+			if c.Delegable == nil || !*c.Delegable {
+				return &Refusal{ErrorCode: ChainBroken, RejectedAtStep: StepDelegationChainWalk, RejectedDelegationID: link.ID,
+					Detail: fmt.Sprintf("intermediate delegation: capability %s is not delegable on this link", requestedCapabilityName)}
+			}
+			break
 		}
-		if !anyDelegable {
-			return &Refusal{ErrorCode: ChainBroken, RejectedAtStep: StepDelegationChainWalk, RejectedDelegationID: link.ID,
-				Detail: "intermediate delegation has no delegable capability"}
-		}
+		// If the requested capability isn't on this link at all, the
+		// caller's matched-capability lookup (right after this function
+		// returns) emits the canonical ChainBroken at the same step.
 		if link.SubDelegationDepthRemaining == 0 {
 			return &Refusal{ErrorCode: ChainBroken, RejectedAtStep: StepDelegationChainWalk, RejectedDelegationID: link.ID,
 				Detail: "sub_delegation_depth_remaining is 0 but chain extends further"}
