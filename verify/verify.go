@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/handshake-protocol/handshake-ai/packages/handshake-go/intersect"
@@ -112,9 +113,11 @@ type NonceStore interface {
 	CheckAndRecord(nonce string, seenAt time.Time) bool
 }
 
-// InMemoryNonceStore is the default backend. TTL-bounded so the map
-// does not grow unbounded under sustained traffic.
+// InMemoryNonceStore is the default backend. TTL-bounded so the map does
+// not grow unbounded under sustained traffic. The store is goroutine-safe
+// — server middleware shares one instance across concurrent requests.
 type InMemoryNonceStore struct {
+	mu      sync.Mutex
 	seen    map[string]time.Time
 	TTLSecs int
 }
@@ -126,7 +129,10 @@ func NewInMemoryNonceStore(ttlSecs int) *InMemoryNonceStore {
 }
 
 // CheckAndRecord returns true if `nonce` was already consumed (replay).
+// Safe to call from many goroutines simultaneously.
 func (n *InMemoryNonceStore) CheckAndRecord(nonce string, seenAt time.Time) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 	cutoff := seenAt.Add(-time.Duration(n.TTLSecs) * time.Second)
 	for k, t := range n.seen {
 		if t.Before(cutoff) {
