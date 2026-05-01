@@ -310,10 +310,20 @@ func (c *Client) RecordReceipt(ctx context.Context, hsCtx *HandshakeContext, in 
         if resp.StatusCode != http.StatusAccepted {
                 return nil, fmt.Errorf("handshake/client: registry rejected receipt %s: HTTP %d %s", rec.ID, resp.StatusCode, string(respBody))
         }
+        // Registry returns `{"receipt_id": "...", "leaf_hash": "..."}` on 202.
+        // We *must* propagate the leaf_hash back to the caller — downstream
+        // inclusion-proof verification keys off it. Silently swallowing an
+        // unmarshal error here (the previous behaviour) meant a malformed or
+        // schema-drifted Registry response would yield an empty LeafHash on
+        // what looked like a successful record, breaking proofs much later
+        // in a way that's painful to attribute. Match the Python SDK and
+        // surface the parse failure as an error.
         var parsed struct {
                 LeafHash string `json:"leaf_hash"`
         }
-        _ = json.Unmarshal(respBody, &parsed)
+        if err := json.Unmarshal(respBody, &parsed); err != nil {
+                return nil, fmt.Errorf("handshake/client: registry accepted receipt %s but response was malformed: %w (body=%q)", rec.ID, err, string(respBody))
+        }
         out.LeafHash = parsed.LeafHash
         return out, nil
 }
