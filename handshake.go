@@ -16,4 +16,4 @@ package handshake
 
 // SpecVersion is the schema revision this package implements. Pinned so
 // callers can detect mismatch against packages/handshake-spec/schemas/.
-const SpecVersion = "0.2.3"
+const SpecVersion = "0.2.4"
