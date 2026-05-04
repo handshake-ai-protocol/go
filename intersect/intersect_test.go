@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Lattice axioms for the capability-intersection algebra (Go side).
 //
 // Mirrors `packages/handshake-rs/tests/intersect_axioms.rs`. We use the

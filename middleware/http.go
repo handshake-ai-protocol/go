@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package middleware provides Phase 4 server-side adapters that verify
 // inbound Handshake artefacts and emit Receipts as side effects.
 //

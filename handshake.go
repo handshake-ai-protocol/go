@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package handshake is the parallel native Go implementation of the Handshake
 // protocol. It is intentionally byte-equal with the canonical Rust core
 // (packages/handshake-rs) on every conformance vector — see

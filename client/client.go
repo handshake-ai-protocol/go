@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package client is the Phase 4 Handshake SDK surface for Go services.
 //
 // One Client per producer DID per process. The Client owns a private key

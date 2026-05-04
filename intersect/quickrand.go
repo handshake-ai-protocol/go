@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package intersect — `quick.Generator` plumbing.
 //
 // `testing/quick` hands generators a `*rand.Rand` from `math/rand`, which

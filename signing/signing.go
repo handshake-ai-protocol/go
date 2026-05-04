@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package signing implements both signature algorithms enumerated by the
 // spec (_common.json#/$defs/signatureAlgorithm):
 //

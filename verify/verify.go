@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package verify implements the Phase 2 chain-walk verifier in pure Go.
 //
 // This is a parallel native implementation of

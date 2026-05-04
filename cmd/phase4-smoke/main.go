@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // phase4-smoke is the live end-to-end check for the Go SDK against a
 // running Phase-3 Registry. It bootstraps a tenant + producer DID, posts a
 // Receipt via client.Client, and waits for the anchor.

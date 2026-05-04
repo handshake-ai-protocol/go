@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package jcs implements RFC 8785 — JSON Canonicalization Scheme — by
 // delegating to github.com/gowebpki/jcs. That package is a direct port of
 // the reference implementation by Anders Rundgren (the RFC editor), so it

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package models contains Go structs mirroring the v0.2.3 JSON Schemas under
 // packages/handshake-spec/schemas/v0.2.3/. Each struct carries `validate`
 // tags consumed by github.com/go-playground/validator/v10 so callers can

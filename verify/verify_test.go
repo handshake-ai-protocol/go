@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Unit tests for the Phase 2 chain-walk verifier (Go side).
 //
 // Mirrors the Rust core's `tests` module in `verify.rs`. The fresh-keypair

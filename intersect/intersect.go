@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package intersect implements the capability-constraint algebra spec §10
 // calls out as the security-critical core of the verifier. The
 // implementation mirrors `packages/handshake-rs/src/intersect.rs` byte-for-

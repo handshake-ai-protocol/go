@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Schema-native validation for the v0.2.3 message types using
 // github.com/go-playground/validator/v10. Required by the FFI architecture
 // (ADR-0006 §"schema-native models in every language") and exercised by the

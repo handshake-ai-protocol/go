@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package hashing wraps SHA-256 — the digest required by
 // _common.json#/$defs/hashAlgorithm. Wrapping (vs. callers depending on
 // crypto/sha256 directly) lets us add SHA3-256 later without a breaking
