@@ -13,7 +13,7 @@ import (
 func validDelegation() DelegationToken {
 	delegable := true
 	return DelegationToken{
-		Version:                     "0.2.4",
+		Version:                     "0.2.3",
 		Kind:                        "DelegationToken",
 		ID:                          "del_01HXXXXXXXXXXXXXXX",
 		Iss:                         "did:web:user.example",
@@ -77,7 +77,7 @@ func TestHandshakeRequest_RoundTripsThroughJSON(t *testing.T) {
 	d := validDelegation()
 	d.Signature = "stub"
 	req := HandshakeRequest{
-		Version:          "0.2.4",
+		Version:          "0.2.3",
 		Kind:             "HandshakeRequest",
 		ID:               "req_01HXXXXXXXXXXXXXXX",
 		Iss:              "did:web:agent.example",
@@ -108,7 +108,7 @@ func TestHandshakeRequest_RoundTripsThroughJSON(t *testing.T) {
 
 func TestReceipt_RejectsUnknownResult(t *testing.T) {
 	r := Receipt{
-		Version:     "0.2.4",
+		Version:     "0.2.3",
 		Kind:        "Receipt",
 		ID:          "rec_01HXXXXXXXXXXXXXXX",
 		HandshakeID: "req_01HXXXXXXXXXXXXXXX",

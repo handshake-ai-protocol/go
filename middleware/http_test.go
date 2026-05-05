@@ -47,9 +47,9 @@ func keysFor(c *client.Client) map[string][]byte {
 func TestHTTP_RejectsMissingHeader(t *testing.T) {
 	c := newOfflineClient(t)
 	h := middleware.HTTP(middleware.Config{
-		Client:             c,
-		Keys:               keysFor(c),
-		ReceiverDID:        "did:hsk:server",
+		Client:              c,
+		Keys:                keysFor(c),
+		ReceiverDID:         "did:hsk:server",
 		AllowInMemoryNonces: true,
 	})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -80,10 +80,10 @@ func TestHTTP_VerifiesAndExposesContext(t *testing.T) {
 
 	var seen *models.HandshakeRequest
 	h := middleware.HTTP(middleware.Config{
-		Client:             c,
-		Keys:               keysFor(c),
-		ReceiverDID:        "did:hsk:server",
-		EmitReceipt:        false,
+		Client:              c,
+		Keys:                keysFor(c),
+		ReceiverDID:         "did:hsk:server",
+		EmitReceipt:         false,
 		AllowInMemoryNonces: true,
 	})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req, ok := middleware.FromContext(r.Context())
@@ -152,10 +152,10 @@ func TestHTTP_EmitsReceipt(t *testing.T) {
 	header := base64.RawURLEncoding.EncodeToString(body)
 
 	h := middleware.HTTP(middleware.Config{
-		Client:             c,
-		Keys:               keysFor(c),
-		ReceiverDID:        c.DID(),
-		EmitReceipt:        true,
+		Client:              c,
+		Keys:                keysFor(c),
+		ReceiverDID:         c.DID(),
+		EmitReceipt:         true,
 		AllowInMemoryNonces: true,
 	})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -218,10 +218,10 @@ func TestHTTP_RejectsForgedSignature(t *testing.T) {
 
 	var handlerRan bool
 	h := middleware.HTTP(middleware.Config{
-		Client:             c,
-		Keys:               keysFor(c),
-		ReceiverDID:        "did:hsk:server",
-		EmitReceipt:        false,
+		Client:              c,
+		Keys:                keysFor(c),
+		ReceiverDID:         "did:hsk:server",
+		EmitReceipt:         false,
 		AllowInMemoryNonces: true,
 	})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		handlerRan = true
@@ -258,10 +258,10 @@ func TestHTTP_RejectsForgedSignature(t *testing.T) {
 func TestHTTP_ConcurrentVerifyRaceFree(t *testing.T) {
 	c := newOfflineClient(t)
 	h := middleware.HTTP(middleware.Config{
-		Client:             c,
-		Keys:               keysFor(c),
-		ReceiverDID:        "did:hsk:server",
-		EmitReceipt:        false,
+		Client:              c,
+		Keys:                keysFor(c),
+		ReceiverDID:         "did:hsk:server",
+		EmitReceipt:         false,
 		AllowInMemoryNonces: true,
 	})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -310,8 +310,8 @@ func TestHTTP_ConcurrentVerifyRaceFree(t *testing.T) {
 func TestHTTP_RejectsMissingKeys(t *testing.T) {
 	c := newOfflineClient(t)
 	h := middleware.HTTP(middleware.Config{
-		Client:             c,
-		ReceiverDID:        c.DID(),
+		Client:              c,
+		ReceiverDID:         c.DID(),
 		AllowInMemoryNonces: true,
 		// Keys deliberately omitted — must fail-closed.
 	})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

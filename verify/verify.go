@@ -78,7 +78,7 @@ const (
 )
 
 // SpecVersion is the version string this implementation accepts.
-const SpecVersion = "0.2.4"
+const SpecVersion = "0.2.3"
 
 // KeyResolver looks up the raw 32-byte Ed25519 public key for a DID.
 // Returns (nil, false) when the DID is unknown.
