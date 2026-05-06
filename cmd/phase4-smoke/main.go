@@ -21,8 +21,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/handshake-protocol/handshake-ai/packages/handshake-go/client"
-	"github.com/handshake-protocol/handshake-ai/packages/handshake-go/signing"
+	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/client"
+	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/signing"
 )
 
 func main() {
