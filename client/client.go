@@ -35,10 +35,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/jcs"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/models"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/signing"
+	"github.com/handshake-ai-protocol/go"
+	"github.com/handshake-ai-protocol/go/jcs"
+	"github.com/handshake-ai-protocol/go/models"
+	"github.com/handshake-ai-protocol/go/signing"
 )
 
 // Signer is the narrow interface every KMS backend must satisfy so the

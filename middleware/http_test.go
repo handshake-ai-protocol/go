@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/client"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/middleware"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/models"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/signing"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/verify"
+	"github.com/handshake-ai-protocol/go/client"
+	"github.com/handshake-ai-protocol/go/middleware"
+	"github.com/handshake-ai-protocol/go/models"
+	"github.com/handshake-ai-protocol/go/signing"
+	"github.com/handshake-ai-protocol/go/verify"
 )
 
 func newOfflineClient(t *testing.T) *client.Client {

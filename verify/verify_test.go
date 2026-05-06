@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/jcs"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/models"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/signing"
+	"github.com/handshake-ai-protocol/go/jcs"
+	"github.com/handshake-ai-protocol/go/models"
+	"github.com/handshake-ai-protocol/go/signing"
 )
 
 func mustParse(t *testing.T, s string) time.Time {

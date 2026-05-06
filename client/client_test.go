@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/client"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/jcs"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/models"
-	"github.com/handshake-ai-protocol/handshake-ai/packages/handshake-go/signing"
+	"github.com/handshake-ai-protocol/go/client"
+	"github.com/handshake-ai-protocol/go/jcs"
+	"github.com/handshake-ai-protocol/go/models"
+	"github.com/handshake-ai-protocol/go/signing"
 )
 
 func newClient(t *testing.T) (*client.Client, *signing.Ed25519Keypair) {

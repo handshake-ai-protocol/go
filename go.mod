@@ -1,4 +1,4 @@
-module github.com/handshake-protocol/handshake-ai/packages/handshake-go
+module github.com/handshake-ai-protocol/go
 
 go 1.26.2
 
