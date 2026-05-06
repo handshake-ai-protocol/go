@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"context"
 	cryptoRand "crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -30,7 +29,7 @@ func main() {
 	registry := envOr("HANDSHAKE_REGISTRY", "http://localhost:8080")
 	tok := adminToken()
 	if tok == "" {
-		log.Fatalf("REPL_ID (or HANDSHAKE_ADMIN_TOKEN) required to derive admin token")
+		log.Fatalf("HANDSHAKE_ADMIN_TOKEN environment variable is required")
 	}
 
 	suffix := hex.EncodeToString(randBytes(4))
@@ -105,15 +104,7 @@ func envOr(k, v string) string {
 }
 
 func adminToken() string {
-	if t := os.Getenv("HANDSHAKE_ADMIN_TOKEN"); t != "" {
-		return t
-	}
-	repl := os.Getenv("REPL_ID")
-	if repl == "" {
-		return ""
-	}
-	sum := sha256.Sum256([]byte("handshake-admin::" + repl))
-	return hex.EncodeToString(sum[:])
+	return os.Getenv("HANDSHAKE_ADMIN_TOKEN")
 }
 
 func mustAdminPost(registry, token, path string, body map[string]any) {
